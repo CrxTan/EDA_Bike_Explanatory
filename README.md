@@ -37,15 +37,24 @@ This dashboard provides insights into bike rental trends using historical data. 
 - **Python** (Pandas, Matplotlib, Seaborn, NumPy)
 - **Streamlit** (for building the interactive dashboard)
 
-## 📂 How to Run
-1. Install the required packages:
-   ```sh
-   pip install streamlit pandas matplotlib seaborn
+## 🔧 How to Run the Application
+
+1. **Requirements**
+   - Python 3.10 or later.
+   - Streamlit and other required libraries.
+   
+2. **Install Dependencies**
+   ```bash
+   pip install -r requirements.txt
    ```
-2. Run the Streamlit app:
-   ```sh
+
+3. **Run the Application**
+   ```bash
    streamlit run dashboard.py
    ```
+
+4. **Access the Dashboard**
+   Once the command is executed, open your browser and visit **http://localhost:8501/** or go to [here](https://faturohmanw23.streamlit.app/).
 
 ## 🎯 Key Insights
 - **Workday rentals** are generally **higher** than weekend rentals.
