@@ -55,7 +55,7 @@ with st.sidebar:
         default=day_df['weather_cond'].unique()
     )
 
-    # Aplikasikan beberapa filter tambahan
+    # Mengaplikasikan beberapa filter tambahan
     filtered_df = filtered_df[
         (filtered_df['season'].isin(selected_seasons)) &
         (filtered_df['weather_cond'].isin(selected_weather))
@@ -80,7 +80,7 @@ tab1, tab2, tab3, tab4 = st.tabs(["Tren Tahunan", "Musim", "Heatmap Cuaca", "Kes
 with tab1:
     st.subheader("📈 Tren Penggunaan Sepeda")
     
-    # Chart type selector
+    # Selector tipe chart
     chart_type = st.radio("Pilih Jenis Grafik:", ("Line", "Bar"), horizontal=True)
     
     fig, ax = plt.subplots(figsize=(10, 5))
@@ -98,7 +98,7 @@ with tab1:
 with tab2:
     st.subheader("🌦️ Penggunaan Sepeda Berdasarkan Musim")
     
-    # Color palette selector
+    # Selector color palete
     color_palette = st.selectbox("Pilih Palette Warna:", 
                                ("coolwarm", "viridis", "magma", "plasma"))
     
@@ -114,7 +114,7 @@ with tab2:
 with tab3:
     st.subheader("🔥 Heatmap Penggunaan Sepeda Berdasarkan Hari dan Kondisi Cuaca")
     
-    # Heatmap color selector
+    # Selector warna heatmap
     heatmap_color = st.selectbox("Pilih Warna Heatmap:", 
                                 ("coolwarm", "YlOrRd", "viridis", "magma"))
     
