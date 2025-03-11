@@ -2,132 +2,143 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-sns.set(style='dark')
+
+sns.set_style("dark")
 
 # Load dataset
-file_path = 'data/merged_df_cleaned.csv'
-df = pd.read_csv(file_path)
+day_df = pd.read_csv("data/day_df.csv")
 
-df['dteday'] = pd.to_datetime(df['dteday'])
+# Konversi kolom date menjadi datetime
+day_df['date'] = pd.to_datetime(day_df['date'])
 
-# Sidebar Filters
-st.sidebar.header("Filters")
-start_date = st.sidebar.date_input("Start Date", df['dteday'].min())
-end_date = st.sidebar.date_input("End Date", df['dteday'].max())
-weather_options = df['weathersit'].unique().tolist()
-selected_weather = st.sidebar.multiselect("Select Weather Conditions", weather_options, default=weather_options)
+# Konversi 'month' menjadi kategorikal
+day_df['month'] = pd.Categorical(day_df['month'], categories=[
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+], ordered=True)
 
-# Ensure at least one weather condition is selected
-if not selected_weather:
-    st.sidebar.error("Please select at least one weather condition.")
-    st.stop()
-
-filtered_df = df[(df['dteday'] >= pd.to_datetime(start_date)) & (df['dteday'] <= pd.to_datetime(end_date)) & (df['weathersit'].isin(selected_weather))]
-
-# Main Dashboard Title
-st.title("🚲 Bike Rentals Dashboard")
-st.write("Name : Faturohman Wicaksono")
+# Streamlit Layout
+st.title("📊 Dashboard Analisis Dataset Bike Sharing")
+st.write("Nama : Faturohman Wicaksono")
 st.write("Email : faturrohman727@gmail.com")
-# Tabs for Overview, Visualization, Clustering & Conclusion
-tab1, tab2, tab3, tab4 = st.tabs(["Overview", "Visualization", "Clustering", "Conclusion"])
+
+with st.sidebar:
+
+    # Menambahkan Logo milik saya
+    st.image("data/logo.png")
+
+    # Date range filter
+    st.sidebar.header("Rentang Waktu")
+    min_date = day_df['date'].min()
+    max_date = day_df['date'].max()
+
+    start_date = st.sidebar.date_input("Tanggal Mulai", min_date, min_value=min_date, max_value=max_date)
+    end_date = st.sidebar.date_input("Tanggal Akhir", max_date, min_value=min_date, max_value=max_date)
+
+    # Convert date_input to datetime
+    start_date = pd.to_datetime(start_date)
+    end_date = pd.to_datetime(end_date)
+
+    # Filter data by selected date range
+    filtered_df = day_df[(day_df['date'] >= start_date) & (day_df['date'] <= end_date)]
+
+    # Sidebar filters for additional interactivity
+    st.sidebar.header("Filter Tambahan")
+    selected_seasons = st.sidebar.multiselect(
+        "Pilih Musim",
+        options=day_df['season'].unique(),
+        default=day_df['season'].unique()
+    )
+
+    selected_weather = st.sidebar.multiselect(
+        "Pilih Kondisi Cuaca",
+        options=day_df['weather_cond'].unique(),
+        default=day_df['weather_cond'].unique()
+    )
+
+    # Aplikasikan beberapa filter tambahan
+    filtered_df = filtered_df[
+        (filtered_df['season'].isin(selected_seasons)) &
+        (filtered_df['weather_cond'].isin(selected_weather))
+    ]
+
+    # Metrik
+    st.sidebar.header("Metrik")
+    total_rentals = filtered_df['count'].sum()
+    avg_daily_rentals = filtered_df['count'].mean()
+    st.sidebar.metric("Total Penyewaan", f"{total_rentals:,.0f}")
+    st.sidebar.metric("Rata-rata Penyewaan Harian", f"{avg_daily_rentals:.0f}")
+
+    # Aggregated data
+    monthly_counts = filtered_df.groupby("month")["count"].sum().reset_index()
+    season_counts = filtered_df.groupby('season')['count'].mean().reset_index()
+    pivot_table_day = filtered_df.pivot_table(values="count", index="weekday", columns="weather_cond", aggfunc="mean")
+
+
+# Tabs
+tab1, tab2, tab3, tab4 = st.tabs(["Tren Tahunan", "Musim", "Heatmap Cuaca", "Kesimpulan"])
 
 with tab1:
-    st.header("🎯 Dashboard Purpose")
-    st.markdown(
-        """
-        This dashboard aims to answer three key business questions regarding bike rental usage:
-        
-        1. **Is bike usage higher on weekdays compared to weekends?**
-        2. **What are the seasonal patterns of bike rentals? Is there a peak season?**
-        3. **How can we predict bike rental numbers based on weather and time factors?**
-        """
-    )
+    st.subheader("📈 Tren Penggunaan Sepeda")
     
-    st.header("📌 About")
-    st.markdown(
-        """
-        The bike-sharing rental process is highly correlated to environmental and seasonal factors. For example, weather conditions, precipitation, day of the week, season, and time of day can influence rental behaviors. The core dataset includes two years of historical data from the Capital Bikeshare system in Washington, D.C., USA, covering the years 2011 and 2012, which is publicly available at Capital Bikeshare Data.
-
-        The data has been aggregated on an hourly and daily basis, with additional weather and seasonal information added. Weather information is sourced from Free Meteo.
-        """
-    )
+    # Chart type selector
+    chart_type = st.radio("Pilih Jenis Grafik:", ("Line", "Bar"), horizontal=True)
     
-    st.header("🔗 Source")
-    st.markdown("[Dataset Source](https://www.kaggle.com/c/bike-sharing-demand/data)")
+    fig, ax = plt.subplots(figsize=(10, 5))
+    if chart_type == "Line":
+        sns.lineplot(data=monthly_counts, x="month", y="count", marker="o", color="b", ax=ax)
+    else:
+        sns.barplot(data=monthly_counts, x="month", y="count", color="b", ax=ax)
+    
+    ax.set_title("Perkembangan Penyewaan Sepeda")
+    ax.set_xlabel("Bulan")
+    ax.set_ylabel("Jumlah Penyewaan Sepeda")
+    plt.xticks(rotation=45)
+    st.pyplot(fig)
 
 with tab2:
-    st.header("📊 Data Visualization")
+    st.subheader("🌦️ Penggunaan Sepeda Berdasarkan Musim")
     
-    # User Count per Day Type
-    st.subheader("Bike Rentals on Workdays vs Weekends")
-    if not filtered_df.empty:
-        day_type_counts = filtered_df.groupby("day_type")["cnt_hour"].sum()
-        fig, ax = plt.subplots()
-        day_type_counts.plot(kind='bar', ax=ax, color=['blue', 'orange'])
-        plt.xticks(rotation=0)
-        plt.ylabel("Total Rentals")
+    # Color palette selector
+    color_palette = st.selectbox("Pilih Palette Warna:", 
+                               ("coolwarm", "viridis", "magma", "plasma"))
+    
+    if not season_counts.empty:
+        fig, ax = plt.subplots(figsize=(8, 5))
+        sns.barplot(x="season", y="count", data=season_counts, palette=color_palette, ax=ax)
+        ax.set_xlabel("Musim")
+        ax.set_ylabel("Rata-rata Jumlah Penyewa Sepeda")
         st.pyplot(fig)
     else:
-        st.warning("No data available for the selected filters.")
-    
-    # Seasonal Usage Pattern
-    st.subheader("Bike Rentals Across Seasons")
-    if not filtered_df.empty:
-        season_counts = filtered_df.groupby("season")["cnt_hour"].sum()
-        fig, ax = plt.subplots()
-        season_counts.plot(kind='bar', ax=ax, color=['green', 'red', 'blue', 'purple'])
-        plt.xticks(rotation=0)
-        plt.ylabel("Total Rentals")
-        st.pyplot(fig)
-    else:
-        st.warning("No data available for the selected filters.")
-    
-    # Weather Impact on Bike Rentals
-    st.subheader("Impact of Weather on Bike Rentals")
-    if not filtered_df.empty:
-        weather_counts = filtered_df.groupby("weathersit")["cnt_hour"].sum()
-        fig, ax = plt.subplots()
-        weather_counts.plot(kind='bar', ax=ax, color=['gray', 'yellow', 'blue'])
-        plt.xticks(rotation=0)
-        plt.ylabel("Total Rentals")
-        st.pyplot(fig)
-    else:
-        st.warning("No data available for the selected filters.")
+        st.warning("Data musim tidak tersedia atau kosong.")
 
 with tab3:
-    st.header("🔍 Clustering Analysis: User Rental Intensity")
+    st.subheader("🔥 Heatmap Penggunaan Sepeda Berdasarkan Hari dan Kondisi Cuaca")
     
-    if not filtered_df.empty:
-        # Binning users into clusters based on rental counts
-        filtered_df['rental_cluster'] = pd.qcut(filtered_df['cnt_hour'], q=3, labels=["Low", "Medium", "High"])
-        cluster_counts = filtered_df['rental_cluster'].value_counts()
-        
-        st.subheader("User Rental Clusters")
-        fig, ax = plt.subplots()
-        cluster_counts.plot(kind='bar', ax=ax, color=['blue', 'orange', 'red'])
-        plt.xticks(rotation=0)
-        plt.ylabel("Number of Days")
-        st.pyplot(fig)
-        
-        st.markdown(
-            """
-            ### Interpretation:
-            - **Low Usage:** Days with the lowest rental activity.
-            - **Medium Usage:** Moderate rental activity.
-            - **High Usage:** Peak rental days, often correlating with good weather and workdays.
-            """
-        )
-    else:
-        st.warning("No data available for the selected filters.")
+    # Heatmap color selector
+    heatmap_color = st.selectbox("Pilih Warna Heatmap:", 
+                                ("coolwarm", "YlOrRd", "viridis", "magma"))
+    
+    fig, ax = plt.subplots(figsize=(10, 5))
+    sns.heatmap(pivot_table_day, cmap=heatmap_color, annot=True, fmt=".1f", linewidths=0.3, ax=ax)
+    ax.set_xlabel("Kondisi Cuaca")
+    ax.set_ylabel("Hari dalam Seminggu")
+    st.pyplot(fig)
 
 with tab4:
-    st.header("📌 Conclusion")
-    st.markdown(
-        """
-        - **Weekday vs Weekend:** Bike rentals are generally higher on workdays compared to weekends.
-        - **Seasonal Trends:** Fall season shows the highest bike rental activity, possibly due to favorable weather conditions.
-        - **Weather Impact:** Clear weather leads to higher bike rentals, while bad weather (rain/snow) significantly reduces usage.
-        - **Peak Hours:** Rentals peak during commuting hours (morning and evening), showing dependency on work-related usage.
-        - **Clustering Insight:** High rental days occur mostly on workdays with good weather, while low rental days correspond to weekends or bad weather days.
-        """
-    )
+    st.subheader("📌 Kesimpulan")
+    st.markdown("""
+    **1️⃣ Pola Penggunaan Sepeda dalam Setahun:**
+    - Penggunaan sepeda meningkat dari awal tahun hingga musim panas.
+    - Puncak penggunaan terjadi di pertengahan tahun (Juni - September).
+    - Setelah bulan September, penggunaan menurun hingga akhir tahun.
+    
+    **2️⃣ Musim dengan Penggunaan Tertinggi:**
+    - Musim gugur (Fall) memiliki penggunaan tertinggi.
+    - Musim semi (Spring) memiliki penggunaan terendah.
+    
+    **3️⃣ Pengaruh Cuaca terhadap Penggunaan Sepeda:**
+    - Kondisi cuaca yang lebih baik berkontribusi pada peningkatan jumlah penyewa.
+    - Cuaca buruk seperti hujan atau salju cenderung menurunkan jumlah pengguna sepeda.
+    """)
+
+st.write("Dashboard ini memberikan gambaran lengkap mengenai pola penggunaan sepeda berdasarkan waktu dan kondisi cuaca. 🚴‍♂️📊")
